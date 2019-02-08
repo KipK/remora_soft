@@ -299,9 +299,6 @@ void getSysJSONData(String & response)
   #ifdef MOD_TELEINFO
     response += F("TELEINFO ");
   #endif
-  #ifdef MOD_RF69
-    response += F("RFM69 ");
-  #endif
   #ifdef MOD_ADPS
     response += F("ADPS");
   #endif

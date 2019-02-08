@@ -36,10 +36,6 @@ extern FrameCallback frames[];
 
 // Number frames to display
 #define DISPLAY_FRAME_COUNT 3
-// Frame RF is activated if MOD_RF69 is defined
-#ifdef MOD_RF69
-  #define DISPLAY_FRAME_COUNT 4
-#endif
 #define DISPLAY_FPS 50 // Time to display a frame
 
 

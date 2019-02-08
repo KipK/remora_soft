@@ -21,24 +21,6 @@
 // changer différentes configurations il
 // faut le faire dans le fichier remora.h
 #include "remora.h"
-
-#ifdef SPARK
-  #include "LibMCP23017.h"
-  #include "LibULPNode_RF_Protocol.h"
-  #include "LibLibTeleinfo.h"
-  //#include "WebServer.h"
-  #include "display.h"
-  #include "i2c.h"
-  #include "pilotes.h"
-  #include "rfm.h"
-  #include "tinfo.h"
-  #include "linked_list.h"
-  #include "LibRadioHead.h"
-  #include "LibRH_RF69.h"
-  #include "LibRHDatagram.h"
-  #include "LibRHReliableDatagram.h"
-#endif
-
 // Arduino IDE need include in main INO file
 #ifdef ESP8266
   #include <EEPROM.h>
@@ -65,11 +47,8 @@
   #endif
   #include <OLEDDisplayUi.h>
   #include <BlynkSimpleEsp8266.h>
-  #include "./LibMCP23017.h"
-  #include "./LibULPNode_RF_Protocol.h"
+  //#include "./LibMCP23017.h">
   #include "./LibLibTeleinfo.h"
-  #include "./LibRadioHead.h"
-  #include "./LibRHReliableDatagram.h"
 #endif
 
 
@@ -81,13 +60,9 @@ unsigned long uptime = 0;
 bool first_setup;
 bool got_first = false;
 
-// Nombre de deconexion cloud detectée
-int my_cloud_disconnect = 0;
+// Nombre de deconexion wifi detectée
+int my_wifi_disconnect = 0;
 
-#ifdef SPARK
-  // Particle WebServer
-  //WebServer server("", 80);
-#endif
 
 #ifdef ESP8266
   // ESP8266 WebServer
@@ -110,56 +85,6 @@ int my_cloud_disconnect = 0;
 
   bool reboot = false;
 #endif
-
-/* ======================================================================
-Function: spark_expose_cloud
-Purpose : declare et expose les variables et fonctions cloud
-Input   :
-Output  : -
-Comments: -
-====================================================================== */
-#ifdef SPARK
-void spark_expose_cloud(void)
-{
-  Debugln("spark_expose_cloud()");
-
-  #ifdef MOD_TELEINFO
-    // Déclaration des variables "cloud" pour la téléinfo (10 variables au maximum)
-    // je ne sais pas si les fonction cloud sont persistentes
-    // c'est à dire en cas de deconnexion/reconnexion du wifi
-    // si elles sont perdues ou pas, à tester
-    // -> Theju: Chez moi elles persistes, led passe verte mais OK
-    //Spark.variable("papp", &mypApp, INT);
-    //Spark.variable("iinst", &myiInst, INT);
-    //Spark.variable("isousc", &myisousc, INT);
-    //Spark.variable("indexhc", &myindexHC, INT);
-    //Spark.variable("indexhp", &myindexHP, INT);
-    //Spark.variable("periode", &myPeriode, STRING); // Période tarifaire en cours (string)
-    //Spark.variable("iperiode", (ptec_e *)&ptec, INT); // Période tarifaire en cours (numerique)
-
-    // Récupération des valeurs d'étiquettes :
-    Particle.variable("tinfo", mytinfo, STRING);
-
-  #endif
-
-  // Déclaration des fonction "cloud" (4 fonctions au maximum)
-  Particle.function("fp",    fp);
-  Particle.function("setfp", setfp);
-
-  // Déclaration des variables "cloud"
-  Particle.variable("nivdelest", &nivDelest, INT); // Niveau de délestage (nombre de zones délestées)
-  //Spark.variable("disconnect", &cloud_disconnect, INT);
-  Particle.variable("etatfp", etatFP, STRING); // Etat actuel des fils pilotes
-  Particle.variable("memfp", memFP, STRING); // Etat mémorisé des fils pilotes (utile en cas de délestage)
-
-  // relais pas disponible sur les carte 1.0
-  #ifndef REMORA_BOARD_V10
-    Particle.function("relais", relais);
-    Particle.variable("etatrelais", &etatrelais, INT);
-  #endif
-}
-#endif
-
 
 // ====================================================
 // Following are dedicated to ESP8266 Platform
@@ -369,13 +294,7 @@ Comments: -
 void setup()
 {
   uint8_t rf_version = 0;
-
-  #ifdef SPARK
-    Serial.begin(115200); // Port série USB
-
-    waitUntil(Particle.connected);
-
-  #endif
+  
   #if defined DEBUG && (defined DEBUG_INIT || !defined MOD_TELEINFO)
     DEBUG_SERIAL.begin(115200);
     DEBUG_SERIAL.setDebugOutput(true);
@@ -401,71 +320,7 @@ void mysetup()
 {
   uint8_t rf_version = 0;
 
-  #ifdef SPARK
-    bool start = false;
-    long started ;
-
-    // On prend le controle de la LED RGB pour faire
-    // un heartbeat si Teleinfo ou OLED ou RFM69
-    #if defined (MOD_TELEINFO) || defined (MOD_OLED) || defined (MOD_RF69)
-    RGB.control(true);
-    RGB.brightness(128);
-    // En jaune nous ne sommes pas encore prêt
-    LedRGBON(COLOR_YELLOW);
-    #endif
-
-    // nous sommes en GMT+1
-    Time.zone(+1);
-
-    // Rendre à dispo nos API, çà doit être fait
-    // très rapidement depuis le dernier firmware
-    spark_expose_cloud();
-
-    // C'est parti
-    started = millis();
-
-    // Attendre que le core soit bien connecté à la serial
-    // car en cas d'update le core perd l'USB Serial a
-    // son reboot et sous windows faut reconnecter quand
-    // on veut débugguer, et si on est pas synchro on rate
-    // le debut du programme, donc petite pause le temps de
-    // reconnecter le terminal série sous windows
-    // Une fois en prod c'est plus necessaire, c'est vraiment
-    // pour le développement (time out à 1s)
-    while(!start)
-    {
-      // Il suffit du time out ou un caractère reçu
-      // sur la liaison série USB pour démarrer
-      if (Serial.available() || millis()-started >= 1000)
-        start = true;
-
-      // On clignote en jaune pour indiquer l'attente
-      LedRGBON(COLOR_YELLOW);
-      delay(50);
-
-      // On clignote en rouge pour indiquer l'attente
-      LedRGBOFF();
-      delay(100);
-    }
-
-    // Et on affiche nos paramètres
-    Debugln("Core Network settings");
-    Debug("IP   : "); Debugln(WiFi.localIP());
-    Debug("Mask : "); Debugln(WiFi.subnetMask());
-    Debug("GW   : "); Debugln(WiFi.gatewayIP());
-    Debug("SSDI : "); Debugln(WiFi.SSID());
-    Debug("RSSI : "); Debug(WiFi.RSSI());Debugln("dB");
-
-    //  WebServer / Command
-    //server.setDefaultCommand(&handleRoot);
-    //webserver.addCommand("json", &sendJSON);
-    //webserver.addCommand("tinfojsontbl", &tinfoJSONTable);
-    //webserver.setFailureCommand(&handleNotFound);
-
-    // start the webserver
-    //server.begin();
-
-  #elif defined (ESP8266)
+  #if defined (ESP8266)
 
     #ifdef MOD_TELEINFO
       // Init de la téléinformation
@@ -698,9 +553,6 @@ void mysetup()
   #ifdef MOD_TELEINFO
     Debug("TELEINFO ");
   #endif
-  #ifdef MOD_RF69
-    Debug("RFM69 ");
-  #endif
   #ifdef BLYNK_AUTH
     Debug("BLYNK ");
   #endif
@@ -725,12 +577,6 @@ void mysetup()
     } else {
       DebuglnF("Fail");
     }
-  #endif
-
-  #ifdef MOD_RF69
-    // Initialisation RFM69 Module
-    if (rfm_setup())
-      status |= STATUS_RFM; // Statut RFM ajouté
   #endif
 
   // Feed the dog
@@ -807,10 +653,10 @@ Comments: -
 void loop()
 {
   static bool refreshDisplay = false;
-  static bool lastcloudstate;
+  static bool lastwifistate;
   static unsigned long previousMillis = 0;  // last time update
   unsigned long currentMillis = millis();
-  bool currentcloudstate ;
+  bool currentwifistate ;
 
   // our own setup
   if (first_setup) {
@@ -853,13 +699,6 @@ void loop()
     _yield();
   #endif
 
-  #ifdef MOD_RF69
-    // Vérification de la reception d'une trame RF
-    if (status & STATUS_RFM)
-      rfm_loop();
-      _yield();
-  #endif
-
   #ifdef MOD_OLED
     if (status & STATUS_OLED) {
       int remainingTimeBudget = ui->update();
@@ -875,28 +714,20 @@ void loop()
   // çà c'est fait
   refreshDisplay = false;
 
-  #if defined (SPARK)
-  // recupération de l'état de connexion au cloud SPARK
-  currentcloudstate = Spark.connected();
-  #elif defined (ESP8266)
+  #if defined (ESP8266)
   // recupération de l'état de connexion au Wifi
-  currentcloudstate = WiFi.status()==WL_CONNECTED ? true:false;
+  currentwifistate = WiFi.status()==WL_CONNECTED ? true:false;
   #endif
 
-  // La connexion cloud vient de chager d'état ?
-  if (lastcloudstate != currentcloudstate)
+  // La connexion wifi vient de chager d'état ?
+  if (lastwifistate != currentwifistate)
   {
     // Mise à jour de l'état
-    lastcloudstate=currentcloudstate;
+    lastwifistate=currentwifistate;
 
     // on vient de se reconnecter ?
-    if (currentcloudstate)
+    if (currentwifistate)
     {
-      // on pubie à nouveau nos affaires
-      // Plus necessaire
-      #ifdef SPARK
-      // spark_expose_cloud();
-      #endif
 
       // led verte
       LedRGBON(COLOR_GREEN);
@@ -904,21 +735,12 @@ void loop()
     else
     {
       // on compte la deconnexion led rouge
-      my_cloud_disconnect++;
-      Debug("Perte de conexion au cloud #");
-      Debugln(my_cloud_disconnect);
+      my_wifi_disconnect++;
+      Debug("Perte de conexion au wifi #");
+      Debugln(my_wifi_disconnect);
       LedRGBON(COLOR_RED);
     }
   }
-
-  //#ifdef SPARK
-  //char buff[64];
-  //int len = 64;
-
-  // process incoming connections one at a time forever
-  //server.processConnection(buff, &len);
-  //#endif
-
 
   // Connection au Wifi ou Vérification
   #ifdef ESP8266

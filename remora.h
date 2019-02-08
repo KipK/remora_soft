@@ -14,25 +14,19 @@
 // **********************************************************************************
 #ifndef REMORA_H_
 #define REMORA_H_
-
 // Spark Core main firmware include file
-#ifdef SPARK
-#include "application.h"
-#endif
 
 // Définir ici le type de carte utilisé
 //#define REMORA_BOARD_V10  // Version 1.0
 //#define REMORA_BOARD_V11  // Version 1.1
 //#define REMORA_BOARD_V12  // Version 1.2
 //#define REMORA_BOARD_V13  // Version 1.3
-#define REMORA_BOARD_V14    // Version 1.4
-//#define REMORA_BOARD_V15  // Version 1.5
+//#define REMORA_BOARD_V14    // Version 1.4
+#define REMORA_BOARD_V15  // Version 1.5
 
 //  Définir ici les modules utilisés sur la carte Remora
-//#define MOD_RF69      /* Module RF  */
 //#define MOD_OLED      /* Afficheur  */
 #define MOD_TELEINFO  /* Teleinfo   */
-//#define MOD_RF_OREGON   /* Reception des sondes orégon */
 #define MOD_ADPS          /* Délestage */
 
 // Type of OLED
@@ -45,33 +39,6 @@
 // Définir ici votre authentification blynk, cela
 // Activera automatiquement blynk http://blynk.cc
 //#define BLYNK_AUTH "YourBlynkAuthToken"
-
-// Librairies du projet remora Pour Particle
-#ifdef SPARK
-  #include "LibMCP23017.h"
-  #include "LibULPNode_RF_Protocol.h"
-  #include "LibLibTeleinfo.h"
-  //#include "WebServer.h"
-
-  #include "display.h"
-  #include "i2c.h"
-  #include "pilotes.h"
-  #include "rfm.h"
-  #include "tinfo.h"
-  #include "linked_list.h"
-  #include "route.h"
-  #include "LibRadioHead.h"
-  #include "LibRH_RF69.h"
-  #include "LibRHDatagram.h"
-  #include "LibRHReliableDatagram.h"
-
-  //#include "OLED_local.h"
-  //#include "mfGFX_local.h"
-
-  #define _yield()  Particle.process()
-  #define _wdt_feed {}
-  #define DEBUG_SERIAL  Serial
-#endif
 
 // Librairies du projet remora Pour Particle
 #ifdef ESP8266
@@ -150,19 +117,12 @@ extern "C" {
 #ifdef ESP8266
 
   #include "./LibMCP23017.h"
-  //#include "./RFM69registers.h"
-  //#include "./RFM69.h"
-  #include "./LibULPNode_RF_Protocol.h"
   #include "./LibLibTeleinfo.h"
-  #include "./LibRadioHead.h"
-  #include "./LibRHReliableDatagram.h"
 
   // Includes du projets remora
   #include "./config.h"
-  #include "./linked_list.h"
   #include "./display.h"
   #include "./i2c.h"
-  #include "./rfm.h"
   #include "./icons.h"
   #include "./fonts.h"
   #include "./pilotes.h"
@@ -173,23 +133,7 @@ extern "C" {
 #endif
 
 // RGB LED related MACROS
-#if defined (SPARK)
-  #define COLOR_RED     255,   0,   0
-  #define COLOR_ORANGE  255, 127,   0
-  #define COLOR_YELLOW  255, 255,   0
-  #define COLOR_GREEN     0, 255,   0
-  #define COLOR_CYAN      0, 255, 255
-  #define COLOR_BLUE      0,   0, 255
-  #define COLOR_MAGENTA 255,   0, 255
-
-  #define LedRGBOFF() RGB.color(0,0,0)
-  #define LedRGBON(x) RGB.color(x)
-
-  // RFM69 Pin mapping
-  #define RF69_CS  SS // default SPI SS Pin
-  #define RF69_IRQ 2
-
-#elif defined (ESP8266)
+#if defined (ESP8266)
   #define COLOR_RED     rgb_brightness, 0, 0
   #define COLOR_ORANGE  rgb_brightness, rgb_brightness>>1, 0
   #define COLOR_YELLOW  rgb_brightness, rgb_brightness, 0
@@ -205,16 +149,11 @@ extern "C" {
   //#define LedRGBOFF() {}
   //#define LedRGBON(x) {}
 
-  // RFM69 Pin mapping
-  #define RF69_CS   15
-  #define RF69_IRQ  2
 #endif
 
 // Ces modules ne sont pas disponibles sur les carte 1.0 et 1.1
 #if defined (REMORA_BOARD_V10) || defined (REMORA_BOARD_V11)
-  #undef MOD_RF69
   #undef MOD_OLED
-  #undef MOD_RF_OREGON
 
   // en revanche le relais l'est sur la carte 1.1
   #ifdef REMORA_BOARD_V11
@@ -252,7 +191,6 @@ extern "C" {
 // Masque de bits pour le status global de l'application
 #define STATUS_MCP    0x0001 // I/O expander detecté
 #define STATUS_OLED   0x0002 // Oled detecté
-#define STATUS_RFM    0x0004 // RFM69  detecté
 #define STATUS_TINFO  0x0008 // Trame téléinfo detecté
 
 // Variables exported to other source file
@@ -262,12 +200,6 @@ extern "C" {
 // status global de l'application
 extern uint16_t status;
 extern unsigned long uptime;
-
-
-#ifdef SPARK
-  // Particle WebServer
-  //extern WebServer server("", 80);
-#endif
 
 #ifdef ESP8266
 

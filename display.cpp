@@ -29,10 +29,6 @@ OLEDDisplayUi * ui = NULL;    // Display User Interface
       drawFrameLogo,
       drawFrameTinfo,
       drawFrameWifi,
-      // Frame RF is activated if MOD_RF69 is defined
-      #ifdef MOD_RF69
-      drawFrameRF
-      #endif
   };
 
   /* ======================================================================
