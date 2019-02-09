@@ -275,11 +275,7 @@ void getSysJSONData(String & response)
   response += "{\"na\":\"Compilé le\",\"va\":\"" __DATE__ " " __TIME__ "\"},\r\n";
 
   response += "{\"na\":\"Version Matériel\",\"va\":\"";
-  #if defined (REMORA_BOARD_V10)
-    response += F("V1.0");
-  #elif defined (REMORA_BOARD_V11)
-    response += F("V1.1");
-  #elif defined (REMORA_BOARD_V12)
+  #if defined (REMORA_BOARD_V12)
     response += F("V1.2 avec MCP23017");
   #elif defined (REMORA_BOARD_V13)
     response += F("V1.3 avec MCP23017");

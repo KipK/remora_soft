@@ -17,8 +17,8 @@
 // Spark Core main firmware include file
 
 // Définir ici le type de carte utilisé
-//#define REMORA_BOARD_V10  // Version 1.0
-//#define REMORA_BOARD_V11  // Version 1.1
+// Version 1.0 et 1.1 ABANDONNEE
+
 //#define REMORA_BOARD_V12  // Version 1.2
 //#define REMORA_BOARD_V13  // Version 1.3
 //#define REMORA_BOARD_V14    // Version 1.4
@@ -43,7 +43,7 @@
 // Librairies du projet remora Pour Particle
 #ifdef ESP8266
   #if defined (REMORA_BOARD_V10) || defined (REMORA_BOARD_V11)
-  #error "La version ESP8266 NodeMCU n'est pas compatible avec les cartes V1.1x"
+  #error "cette version de Remora n'est pas compatible avec les cartes V1.0 et v1.1"
   #endif
 
   #define _yield  yield
@@ -151,22 +151,8 @@ extern "C" {
 
 #endif
 
-// Ces modules ne sont pas disponibles sur les carte 1.0 et 1.1
-#if defined (REMORA_BOARD_V10) || defined (REMORA_BOARD_V11)
-  #undef MOD_OLED
-
-  // en revanche le relais l'est sur la carte 1.1
-  #ifdef REMORA_BOARD_V11
-    #define RELAIS_PIN A1
-  #endif
-
-  // Creation macro unique et indépendante du type de
-  // carte pour le controle des I/O
-  #define _digitalWrite(p,v)  digitalWrite(p,v)
-  #define _pinMode(p,v)       pinMode(p,v)
-
 // Carte 1.2
-#elif defined (REMORA_BOARD_V12)
+#if defined (REMORA_BOARD_V12)
   #define LED_PIN    8
   #define RELAIS_PIN 9
 
@@ -207,13 +193,9 @@ extern unsigned long uptime;
 
   // ESP8266 WebServer
   extern AsyncWebServer server;
+  
     // RGB LED
-  //extern NeoPixelBus rgb_led;
-  //extern NeoPixelBus rgb_led(1, RGB_LED_PIN);
-  //extern template ReallyBigFunction<int>();
-  //extern  class NeoPixelBus rgb_led();
   extern MyPixelBus rgb_led;
-  //extern  template class NeoPixelBus<NeoRgbFeature, NeoEsp8266BitBang800KbpsMethod> rgb_led;
 
   // define whole brigtness level for RGBLED
   extern uint8_t rgb_brightness;

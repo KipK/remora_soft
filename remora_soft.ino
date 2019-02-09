@@ -531,11 +531,7 @@ void mysetup()
   Debugln(REMORA_VERSION);
   Debug("Compile avec les fonctions : ");
 
-  #if defined (REMORA_BOARD_V10)
-    Debug("BOARD V1.0 ");
-  #elif defined (REMORA_BOARD_V11)
-    Debug("BOARD V1.1 ");
-  #elif defined (REMORA_BOARD_V12)
+  #if defined (REMORA_BOARD_V12)
     Debug("BOARD V1.2 MCP23017 ");
   #elif defined (REMORA_BOARD_V13)
     Debug("BOARD V1.3 MCP23017 ");
@@ -607,7 +603,7 @@ void mysetup()
 
   // Enclencher le relais 1 seconde
   // si dispo sur la carte
-  #ifndef REMORA_BOARD_V10
+
     Debug("Relais=ON   ");
     Debugflush();
     relais("1");
@@ -626,7 +622,6 @@ void mysetup()
     Debugln("Relais=OFF");
     Debugflush();
     relais("0");
-  #endif
 
   // nous avons fini, led Jaune
   LedRGBON(COLOR_YELLOW);

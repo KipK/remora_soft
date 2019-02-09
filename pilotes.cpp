@@ -45,7 +45,7 @@ Input   : commande numéro du fil pilote + commande optionelle
           Si la commande est absente la fonction retourne l'état du FP
           ex: 1 => si état FP1 est "arret" retourne code ASCII du "A" (65)
 Output  : 0 ou etat commande, si ok -1 sinon
-Comments: exposée par l'API spark donc attaquable par requête HTTP(S)
+Comments: exposée par l'API donc attaquable par requête HTTP(S)
 ====================================================================== */
 int setfp(String command)
 {
@@ -107,7 +107,7 @@ Input   : numéro du fil pilote (1 à NB_FILS_PILOTE)
               7,'2' => FP7 eco -2 (To DO)
               5,'D' => FP5 délestage (=> hors-gel et blocage des nouvelles commandes)
 Output  : 0 si ok -1 sinon
-Comments: non exposée par l'API spark car on y gère le délestage
+Comments: non exposée par l'API car on y gère le délestage
 ====================================================================== */
 int setfp_interne(uint8_t fp, char cOrdre)
 {
@@ -289,7 +289,7 @@ Input   : liste des commandes
               E-CHA12 => FP2 Eco  , FP2 inchangé, FP3 confort, FP4 hors gel
                         FP5 arrêt, FP6 Eco-1    , FP7 Eco-2
 Output  : 0 si ok -1 sinon
-Comments: exposée par l'API spark donc attaquable par requête HTTP(S)
+Comments: exposée par l'API donc attaquable par requête HTTP(S)
 ====================================================================== */
 int fp(String command)
 {
@@ -339,7 +339,7 @@ Function: relais
 Purpose : selectionne l'état du relais
 Input   : état du relais (0 ouvert, 1 fermé)
 Output  : etat du relais (0 ou 1)
-Comments: exposée par l'API spark donc attaquable par requête HTTP(S)
+Comments: exposée par l'API donc attaquable par requête HTTP(S)
 ====================================================================== */
 int relais(String command)
 {
@@ -379,7 +379,7 @@ Function: relais
 Purpose : selectionne l'état du relais
 Input   : état du relais (0 ouvert, 1 fermé)
 Output  : etat du relais (0 ou 1)
-Comments: exposée par l'API spark donc attaquable par requête HTTP(S)
+Comments: exposée par l'API donc attaquable par requête HTTP(S)
 ====================================================================== */
 int fnct_relais(String command)
 {
@@ -451,15 +451,6 @@ Comments: -
 ====================================================================== */
 bool pilotes_setup(void)
 {
-  // Cartes Version 1.0 et 1.1 pilotage part port I/O du spark
-  #if defined (REMORA_BOARD_V10) || defined (REMORA_BOARD_V11)
-
-    // 2*nbFilPilotes car 2 pins pour commander 1 fil pilote
-    for (uint8_t i=0; i < (NB_FILS_PILOTES*2); i++)
-      _pinMode(SortiesFP[i], OUTPUT); // Chaque commande de fil pilote est une sortie
-
-  // Cartes Version 1.2+ pilotage part I/O Expander
-  #else
     Debug("Initializing MCP23017...Searching...");
     Debugflush();
 
@@ -484,7 +475,6 @@ bool pilotes_setup(void)
       Debugln("OK!");
       Debugflush();
     }
-  #endif
 
   // ou l'a trouvé
   return (true);
