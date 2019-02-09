@@ -19,8 +19,6 @@
 
 #include "./config.h"
 
-#ifdef ESP8266
-
 // Configuration structure for whole program
 _Config config;
 
@@ -227,7 +225,11 @@ void resetConfig(void)
   memset(&config, 0, sizeof(_Config));
 
   // Set default Hostname
-  sprintf_P(config.host, PSTR("Remora_%06X"), ESP.getChipId());
+  #if defined (ESP8266)
+    sprintf_P(config.host, PSTR("Remora_%06X"), ESP.getChipId());
+  #elif defined (ESP32)
+    sprintf_P(config.host, PSTR("Remora_%06X"), ESP.getEfuseMac());//The chip ID is essentially its MAC address(length: 6 bytes).
+  #endif
   strcpy_P(config.ota_auth, PSTR(DEFAULT_OTA_AUTH));
   config.ota_port = DEFAULT_OTA_PORT ;
 
@@ -270,5 +272,3 @@ String getFingerPrint(void) {
     , config.jeedom.fingerprint[16], config.jeedom.fingerprint[17], config.jeedom.fingerprint[18], config.jeedom.fingerprint[19]);
   return String(buffer);
 }
-
-#endif // ESP8266

@@ -23,8 +23,6 @@
 // Include main project include file
 #include "remora.h"
 
-#ifdef ESP8266
-
 #define CFG_SSID_SIZE 		32
 #define CFG_PSK_SIZE  		64
 #define CFG_HOSTNAME_SIZE 16
@@ -158,5 +156,4 @@ void showConfig(void);
 void resetConfig(void);
 String getFingerPrint(void);
 
-#endif // ESP8266
 #endif // CONFIG_h

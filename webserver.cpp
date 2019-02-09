@@ -30,9 +30,6 @@ const char FP_QCNL[] PROGMEM = "\",\r\n\"";
 const char FP_RESTART[] PROGMEM = "OK, Redémarrage en cours\r\n";
 const char FP_NL[] PROGMEM = "\r\n";
 
-
-#ifdef ESP8266
-
 /* ======================================================================
 Function: getContentType
 Purpose : return correct mime content type depending on file extension
@@ -207,7 +204,7 @@ void tinfoJSONTable(AsyncWebServerRequest *request)
     while (me->next) {
 
       // we're there
-      ESP.wdtFeed();
+      _wdt_feed();
 
       // go to next node
       me = me->next;
@@ -777,7 +774,11 @@ void handleFactoryReset(AsyncWebServerRequest *request)
   ESP.eraseConfig();
   request->send(200, "text/plain", FPSTR(FP_RESTART));
   delay(1000);
-  ESP.restart();
+  #if defined (ESP8266)
+    ESP.restart();
+  #elif defined (ESP32)
+    esp_restart_noos();
+  #endif
   while (true)
     delay(1);
 }
@@ -1185,5 +1186,3 @@ void handleNotFound(AsyncWebServerRequest *request)
   }
 
 }
-
-#endif

@@ -19,8 +19,6 @@
 // **********************************************************************************
 #include "webclient.h"
 
-#ifdef ESP8266
-
 /* ======================================================================
 Function: httpPost
 Purpose : Do a http post
@@ -48,25 +46,26 @@ boolean httpPost(const char * host, const uint16_t port, const char * url,
     int code;
 
     Debugf("Request to server SSL %s:%d\n", host, port);
-//    myWdt = millis();
-//    Debugln("Client Secure started");
-//    Debugln("Free HEAP: " + String(ESP.getFreeHeap()));
     const int API_TIMEOUT = 5000;
     // client BearSSL
-    BearSSL::WiFiClientSecure client;
+    #if defined (ESP8266)
+      BearSSL::WiFiClientSecure client;
+    #elif defined (ESP32)
+      WiFiClientSecure client;
+    #endif
     client.setTimeout(API_TIMEOUT);
     // Empreinte numérique SHA1 du serveur sécurisé
     // (à renseigner dans le formulaire de configuration HTML de la Remora)
-    client.setFingerprint(fingerprint);       // Permet de vérifier l'empreinte numérique du serveur SSL
+    #if defined (ESP8266)
+    client.setFingerprint(fingerprint);       // Permet de vérifier l'empreinte numérique du serveur SSL    
     //=== Vous devez choisir entre la vérification du fingerprint ou insecure
     //client.setInsecure();          // Permet de ne pas avoir de vérification du serveur SSL
     client.setBufferSizes(512, 512); // Limite l'espace mémoire utilisé par la classe BearSSL pour la vérification de certificats x509
-
+    #elif defined (ESP32)
+      client.setCACert(root_ca);
+    #endif
     client.setTimeout(API_TIMEOUT);
-//    Debugln("Client Secure started " + String(millis() - myWdt) + " ms");
-//    Debugln("Free HEAP: " + String(ESP.getFreeHeap()));
-//    Debugln("connecting to " + String(host));
-//    myWdt = millis();
+
     if (!client.connect(host, port)) {
 //      Debugln("Connection failed " + String(millis() - myWdt) + " ms");
       Debugf("Connection failed to %s:%d\n", host, port);
@@ -353,5 +352,3 @@ boolean jeedomPost(void)
 
   return ret;
 }
-
-#endif // ESP8266

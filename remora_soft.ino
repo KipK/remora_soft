@@ -22,35 +22,38 @@
 // faut le faire dans le fichier remora.h
 #include "remora.h"
 // Arduino IDE need include in main INO file
-#ifdef ESP8266
-  #include <EEPROM.h>
-  #include <FS.h>
+
+#include <EEPROM.h>
+#include <FS.h>
+#if defined (ESP8266)
   #include <ESP8266WiFi.h>
   #include <ESP8266HTTPClient.h>
-  // #include <ESP8266WebServer.h>
   #include <ESP8266mDNS.h>
-  #include <ESPAsyncTCP.h>
-  #include <ESPAsyncWebServer.h>
-  #include <WiFiUdp.h>
-  #include <ArduinoOTA.h>
-  #include <Wire.h>
-  #include <SPI.h>
-  #include <Ticker.h>
-  #include <NeoPixelBus.h>
-  #if defined (OLED_SSD1306)
-  #include <SSD1306Wire.h>
-  #include <OLEDDisplayUi.h>
-  #endif
-  #if defined (OLED_SH1106)
-  #include <SH1106Wire.h>
-  #include <OLEDDisplayUi.h>
-  #endif
-  #include <OLEDDisplayUi.h>
-  #include <BlynkSimpleEsp8266.h>
-  //#include "./LibMCP23017.h">
-  #include "./LibLibTeleinfo.h"
+#elif defined (ESP32)
+  #include <WiFi.h>
+  #include <HTTPClient.h>
+  #include <mdns.h>
 #endif
 
+#include <ESPAsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+#include <WiFiUdp.h>
+#include <ArduinoOTA.h>
+#include <Wire.h>
+#include <SPI.h>
+#include <Ticker.h>
+#include <NeoPixelBus.h>
+#if defined (OLED_SSD1306)
+#include <SSD1306Wire.h>
+#include <OLEDDisplayUi.h>
+#endif
+#if defined (OLED_SH1106)
+#include <SH1106Wire.h>
+#include <OLEDDisplayUi.h>
+#endif
+#include <OLEDDisplayUi.h>
+//#include "./LibMCP23017.h">
+#include "./LibLibTeleinfo.h"
 
 // Variables globales
 // ==================
@@ -63,34 +66,30 @@ bool got_first = false;
 // Nombre de deconexion wifi detectée
 int my_wifi_disconnect = 0;
 
+// ESP8266 WebServer
+AsyncWebServer server(80);
+// Use WiFiClient class to create a connection to WEB server
+WiFiClient client;
+// RGB LED (1 LED)
+MyPixelBus rgb_led(1, RGB_LED_PIN);
 
-#ifdef ESP8266
-  // ESP8266 WebServer
-  AsyncWebServer server(80);
-  // Use WiFiClient class to create a connection to WEB server
-  WiFiClient client;
-  // RGB LED (1 LED)
-  MyPixelBus rgb_led(1, RGB_LED_PIN);
+// define whole brigtness level for RGBLED
+uint8_t rgb_brightness = 127;
 
-  // define whole brigtness level for RGBLED
-  uint8_t rgb_brightness = 127;
+Ticker Tick_emoncms;
+Ticker Tick_jeedom;
 
-  Ticker Tick_emoncms;
-  Ticker Tick_jeedom;
+volatile boolean task_emoncms = false;
+volatile boolean task_jeedom = false;
 
-  volatile boolean task_emoncms = false;
-  volatile boolean task_jeedom = false;
+bool ota_blink;
 
-  bool ota_blink;
-
-  bool reboot = false;
-#endif
-
+bool reboot = false;
+  
 // ====================================================
 // Following are dedicated to ESP8266 Platform
 // Wifi management and OTA updates
 // ====================================================
-#ifdef ESP8266
 
 /* ======================================================================
 Function: Task_emoncms
@@ -247,8 +246,6 @@ int WifiHandleConn(boolean setup = false)
   return WiFi.status();
 }
 
-#endif
-
 /* ======================================================================
 Function: timeAgo
 Purpose : format total seconds to human readable text
@@ -308,7 +305,6 @@ void setup()
 }
 
 
-
 /* ======================================================================
 Function: mysetup
 Purpose : prepare and init stuff, configuration, ..
@@ -318,9 +314,8 @@ Comments: -
 ====================================================================== */
 void mysetup()
 {
-  uint8_t rf_version = 0;
 
-  #if defined (ESP8266)
+  #if defined (ESP8266) || defined (ESP32)
 
     #ifdef MOD_TELEINFO
       // Init de la téléinformation
@@ -348,8 +343,11 @@ void mysetup()
     } else {
 
       DebuglnF("SPIFFS Mount succesfull");
-
-      Dir dir = SPIFFS.openDir("/");
+      #if defined (ESP8266)
+        Dir dir = SPIFFS.openDir("/");
+      #elif defined (ESP32)
+        File dir = fs.open("/");
+      #endif
       while (dir.next()) {
         String fileName = dir.fileName();
         size_t fileSize = dir.fileSize();
@@ -517,12 +515,18 @@ void mysetup()
     server.begin();
     DebuglnF("HTTP server started");
 
-    #ifdef BLYNK_AUTH
-      Blynk.config(BLYNK_AUTH);
-    #endif
-
   #endif
 
+
+  // ESP32 watchdog init
+  #ifdef ESP32
+//    wdt_timer = timerBegin(0, 80, true); //timer 0, div 80
+//    timerAttachInterrupt(wdt_timer, &resetModule, true);
+//    timerAlarmWrite(wdt_timer, 10000000, false); //set time in us
+//    timerAlarmEnable(wdt_timer); //enable interrupt
+      esp_task_wdt_init(10,true);
+      esp_task_wdt_add(NULL);
+  #endif
   // Init bus I2C
   i2c_init();
   i2c_scan();
@@ -548,9 +552,6 @@ void mysetup()
   #endif
   #ifdef MOD_TELEINFO
     Debug("TELEINFO ");
-  #endif
-  #ifdef BLYNK_AUTH
-    Debug("BLYNK ");
   #endif
   #ifdef MOD_ADPS
     Debug("ADPS ");
@@ -659,13 +660,11 @@ void loop()
     first_setup = false;
   }
 
-  #ifdef ESP8266
   /* Reboot handler */
   if (reboot) {
     delay(REBOOT_DELAY);
     ESP.restart();
   }
-  #endif
 
   // Gérer notre compteur de secondes
   if ( millis()-previousMillis > 1000) {
@@ -673,19 +672,7 @@ void loop()
     previousMillis = currentMillis;
     uptime++;
     refreshDisplay = true ;
-    #ifdef BLYNK_AUTH
-      if ( Blynk.connected() ) {
-        String up    = String(uptime) + "s";
-        String papp  = String(mypApp) + "W";
-        String iinst = String(myiInst)+ "A";
-        Blynk.virtualWrite(V0, up, papp, iinst, mypApp);
-        _yield();
-      }
-    #endif
   } else {
-    #ifdef BLYNK_AUTH
-      Blynk.run(); // Initiates Blynk
-    #endif
   }
 
   #ifdef MOD_TELEINFO
@@ -738,22 +725,20 @@ void loop()
   }
 
   // Connection au Wifi ou Vérification
-  #ifdef ESP8266
-    // Webserver
-    //server.handleClient();
-    ArduinoOTA.handle();
+  // Webserver
+  //server.handleClient();
+  ArduinoOTA.handle();
 
-    if (task_emoncms) {
-      if (!emoncmsPost()) {
-        DebuglnF("Erreur push Emoncms");
-      }
-      task_emoncms=false;
-    } else if (task_jeedom) {
-      if (!jeedomPost()) {
-        DebuglnF("Erreur push Jeedom");
-      }
-      task_jeedom=false;
+  if (task_emoncms) {
+    if (!emoncmsPost()) {
+      DebuglnF("Erreur push Emoncms");
     }
-  #endif
+    task_emoncms=false;
+  } else if (task_jeedom) {
+    if (!jeedomPost()) {
+      DebuglnF("Erreur push Jeedom");
+    }
+    task_jeedom=false;
+  }
 
 }

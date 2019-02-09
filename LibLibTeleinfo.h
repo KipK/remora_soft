@@ -37,8 +37,10 @@
 #endif
 
 // Using ESP8266 ?
-#ifdef ESP8266
+#if defined (ESP8266)
 #include <ESP8266WiFi.h>
+#elif defined (ESP32)
+#include <WiFi.h>
 #endif
 
 
@@ -49,17 +51,10 @@
 // debugging, this should not interfere with main sketch or other 
 // libraries
 #ifdef TI_DEBUG
-  #ifdef ESP8266
     #define TI_Debug(x)    Serial1.print(x)
     #define TI_Debugln(x)  Serial1.println(x)
     #define TI_Debugf(...) Serial1.printf(__VA_ARGS__)
     #define TI_Debugflush  Serial1.flush
-  #else
-    #define TI_Debug(x)    Serial.print(x)
-    #define TI_Debugln(x)  Serial.println(x)
-    #define TI_Debugf(...) Serial.printf(__VA_ARGS__)
-    #define TI_Debugflush  Serial.flush
-  #endif
 #else
   #define TI_Debug(x)    
   #define TI_Debugln(x)  
@@ -67,11 +62,8 @@
   #define TI_Debugflush  
 #endif
 
-#ifdef ESP8266
-  // For 4 bytes Aligment boundaries
-  #define ESP8266_allocAlign(size)  ((size + 3) & ~((size_t) 3))
-#endif
-
+// For 4 bytes Aligment boundaries
+#define ESP8266_allocAlign(size)  ((size + 3) & ~((size_t) 3))
 
 #pragma pack(push)  // push current alignment to stack
 #pragma pack(1)     // set alignment to 1 byte boundary

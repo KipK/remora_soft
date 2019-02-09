@@ -35,62 +35,77 @@
 
 // Version logicielle remora
 #define REMORA_VERSION "1.4.0"
-
-// Définir ici votre authentification blynk, cela
-// Activera automatiquement blynk http://blynk.cc
-//#define BLYNK_AUTH "YourBlynkAuthToken"
-
 // Librairies du projet remora Pour Particle
-#ifdef ESP8266
-  #if defined (REMORA_BOARD_V10) || defined (REMORA_BOARD_V11)
-  #error "cette version de Remora n'est pas compatible avec les cartes V1.0 et v1.1"
-  #endif
 
-  #define _yield  yield
+#if defined (REMORA_BOARD_V10) || defined (REMORA_BOARD_V11)
+#error "cette version de Remora n'est pas compatible avec les cartes V1.0 et v1.1"
+#endif
+
+#define _yield  yield
+#if defined (ESP8266)
   #define _wdt_feed ESP.wdtFeed
-  #define DEBUG_SERIAL  Serial1
-  //#define DEBUG_INIT            /* Permet d'initialiser la connexion série pour debug */
-  #define REBOOT_DELAY    100     /* Delay for rebooting once reboot flag is set */
+#elif defined (ESP32)
+  //#include "esp_system.h"
+  //#define _wdt_feed timerWrite(wdt_timer, 0); //reset timer (feed watchdog)
+  #define _wdt_feed esp_task_wdt_feed
+#endif
+#define DEBUG_SERIAL  Serial1
+//#define DEBUG_INIT            /* Permet d'initialiser la connexion série pour debug */
+#define REBOOT_DELAY    100     /* Delay for rebooting once reboot flag is set */
 
-  // Définir ici les identifiants de
-  // connexion à votre réseau Wifi
-  // =====================================
+// Définir ici les identifiants de
+// connexion à votre réseau Wifi
+// =====================================
 //  #define DEFAULT_WIFI_SSID "VotreSSID"
 //  #define DEFAULT_WIFI_PASS "VotreClé"
-  #define DEFAULT_WIFI_AP_PASS "Remora_WiFi"
-  // =====================================
-  #define DEFAULT_OTA_PORT  8266
-  #define DEFAULT_OTA_PASS  "Remora_OTA"
-  #define DEFAULT_HOSTNAME  "remora"
-  #include "Arduino.h"
-  #include <EEPROM.h>
-  #include <FS.h>
+#define DEFAULT_WIFI_AP_PASS "Remora_WiFi"
+// =====================================
+#define DEFAULT_OTA_PORT  8266
+#define DEFAULT_OTA_PASS  "Remora_OTA"
+#define DEFAULT_HOSTNAME  "remora"
+#include "Arduino.h"
+#include <EEPROM.h>
+#include <FS.h>
+#if defined (ESP8266)
   #include <ESP8266WiFi.h>
-  #include <WiFiClientSecure.h>
+#elif defined (ESP32)
+  #include <WiFi.h>
+  #include "FS.h"
+  #include "SPIFFS.h"
+  #include <esp_int_wdt.h>
+  #include <esp_task_wdt.h>
+#endif
+#include <WiFiClientSecure.h>
+#if defined (ESP8266)
   #include <ESP8266HTTPClient.h>
   #include <ESP8266mDNS.h>
-  #include <ESPAsyncTCP.h>
-  #include <ESPAsyncWebServer.h>
-  #include <WiFiUdp.h>
-  #include <Ticker.h>
-  #include <NeoPixelBus.h>
-  #include <ArduinoOTA.h>
-  #include <Wire.h>
-  #include <SPI.h>
-  #if defined (OLED_SSD1306)
-  #include <SSD1306Wire.h>
-  #include <OLEDDisplayUi.h>
-  #endif
-  #if defined (OLED_SH1106)
-  #include <SH1106Wire.h>
-  #include <OLEDDisplayUi.h>
-  #endif
-  #include <OLEDDisplayUi.h>
+#elif defined (ESP32)
+  #include <HTTPClient.h>
+  #include <mdns.h>
+#endif
 
+#include <ESPAsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+#include <WiFiUdp.h>
+#include <Ticker.h>
+#include <NeoPixelBus.h>
+#include <ArduinoOTA.h>
+#include <Wire.h>
+#include <SPI.h>
+#if defined (OLED_SSD1306)
+#include <SSD1306Wire.h>
+#include <OLEDDisplayUi.h>
+#endif
+#if defined (OLED_SH1106)
+#include <SH1106Wire.h>
+#include <OLEDDisplayUi.h>
+#endif
+#include <OLEDDisplayUi.h>
+
+#ifdef ESP8266
 extern "C" {
 #include "user_interface.h"
 }
-
 #endif
 
 #define DEBUG // Décommenter cette ligne pour activer le DEBUG serial
@@ -114,42 +129,36 @@ extern "C" {
 #define Debugflush()
 #endif
 
-#ifdef ESP8266
+#include "./LibMCP23017.h"
+#include "./LibLibTeleinfo.h"
 
-  #include "./LibMCP23017.h"
-  #include "./LibLibTeleinfo.h"
-
-  // Includes du projets remora
-  #include "./config.h"
-  #include "./display.h"
-  #include "./i2c.h"
-  #include "./icons.h"
-  #include "./fonts.h"
-  #include "./pilotes.h"
-  #include "./tinfo.h"
-  #include "./webserver.h"
-  #include "./webclient.h"
-
-#endif
+// Includes du projets remora
+#include "./config.h"
+#include "./display.h"
+#include "./i2c.h"
+#include "./icons.h"
+#include "./fonts.h"
+#include "./pilotes.h"
+#include "./tinfo.h"
+#include "./webserver.h"
+#include "./webclient.h"
 
 // RGB LED related MACROS
-#if defined (ESP8266)
-  #define COLOR_RED     rgb_brightness, 0, 0
-  #define COLOR_ORANGE  rgb_brightness, rgb_brightness>>1, 0
-  #define COLOR_YELLOW  rgb_brightness, rgb_brightness, 0
-  #define COLOR_GREEN   0, rgb_brightness, 0
-  #define COLOR_CYAN    0, rgb_brightness, rgb_brightness
-  #define COLOR_BLUE    0, 0, rgb_brightness
-  #define COLOR_MAGENTA rgb_brightness, 0, rgb_brightness
 
-  // On ESP8266 we use NeopixelBus library to drive neopixel RGB LED
-  #define RGB_LED_PIN 0 // RGB Led driven by GPIO0
-  #define LedRGBOFF() { rgb_led.SetPixelColor(0,0); rgb_led.Show(); }
-  #define LedRGBON(x) { RgbColor color(x); rgb_led.SetPixelColor(0,color); rgb_led.Show(); }
-  //#define LedRGBOFF() {}
-  //#define LedRGBON(x) {}
+#define COLOR_RED     rgb_brightness, 0, 0
+#define COLOR_ORANGE  rgb_brightness, rgb_brightness>>1, 0
+#define COLOR_YELLOW  rgb_brightness, rgb_brightness, 0
+#define COLOR_GREEN   0, rgb_brightness, 0
+#define COLOR_CYAN    0, rgb_brightness, rgb_brightness
+#define COLOR_BLUE    0, 0, rgb_brightness
+#define COLOR_MAGENTA rgb_brightness, 0, rgb_brightness
 
-#endif
+// On ESP8266 we use NeopixelBus library to drive neopixel RGB LED
+#define RGB_LED_PIN 0 // RGB Led driven by GPIO0
+#define LedRGBOFF() { rgb_led.SetPixelColor(0,0); rgb_led.Show(); }
+#define LedRGBON(x) { RgbColor color(x); rgb_led.SetPixelColor(0,color); rgb_led.Show(); }
+//#define LedRGBOFF() {}
+//#define LedRGBON(x) {}
 
 // Carte 1.2
 #if defined (REMORA_BOARD_V12)
@@ -186,11 +195,11 @@ extern "C" {
 // status global de l'application
 extern uint16_t status;
 extern unsigned long uptime;
-
-#ifdef ESP8266
-
+#if defined (ESP8266)
   typedef NeoPixelBus<NeoRgbFeature, NeoEsp8266BitBang800KbpsMethod> MyPixelBus;
-
+#elif defined (ESP32)
+  typedef NeoPixelBus<NeoRgbFeature, NeoEsp32BitBang800KbpsMethod> MyPixelBus;
+#endif
   // ESP8266 WebServer
   extern AsyncWebServer server;
   
@@ -205,8 +214,6 @@ extern unsigned long uptime;
   extern bool   reboot; /* Flag to reboot the ESP */
   extern bool   ota_blink;
   extern bool   got_first;
-#endif
-
 
 extern uint16_t status; // status global de l'application
 
@@ -215,5 +222,54 @@ extern uint16_t status; // status global de l'application
 char * timeAgo(unsigned long);
 void Task_emoncms();
 void Task_jeedom();
+
+// ESP32 watchdog
+#ifdef ESP32
+  #include "esp_system.h"
+  hw_timer_t *wdt_timer = NULL;
+  void IRAM_ATTR resetModule(){ // tricky way to reboot completly the device.
+      ets_printf("WTD timeout: reboot\n");
+      esp_task_wdt_init(1,true);
+      esp_task_wdt_add(NULL);
+      while(true);
+  }
+#endif
+
+
+
+// www.howsmyssl.com root certificate authority, to verify the server
+// change it to your server root CA
+// SHA1 fingerprint is broken on esp32 now
+
+#ifdef ESP32
+const char* root_ca= \
+     "-----BEGIN CERTIFICATE-----\n" \
+     "MIIEkjCCA3qgAwIBAgIQCgFBQgAAAVOFc2oLheynCDANBgkqhkiG9w0BAQsFADA/\n" \
+     "MSQwIgYDVQQKExtEaWdpdGFsIFNpZ25hdHVyZSBUcnVzdCBDby4xFzAVBgNVBAMT\n" \
+     "DkRTVCBSb290IENBIFgzMB4XDTE2MDMxNzE2NDA0NloXDTIxMDMxNzE2NDA0Nlow\n" \
+     "SjELMAkGA1UEBhMCVVMxFjAUBgNVBAoTDUxldCdzIEVuY3J5cHQxIzAhBgNVBAMT\n" \
+     "GkxldCdzIEVuY3J5cHQgQXV0aG9yaXR5IFgzMIIBIjANBgkqhkiG9w0BAQEFAAOC\n" \
+     "AQ8AMIIBCgKCAQEAnNMM8FrlLke3cl03g7NoYzDq1zUmGSXhvb418XCSL7e4S0EF\n" \
+     "q6meNQhY7LEqxGiHC6PjdeTm86dicbp5gWAf15Gan/PQeGdxyGkOlZHP/uaZ6WA8\n" \
+     "SMx+yk13EiSdRxta67nsHjcAHJyse6cF6s5K671B5TaYucv9bTyWaN8jKkKQDIZ0\n" \
+     "Z8h/pZq4UmEUEz9l6YKHy9v6Dlb2honzhT+Xhq+w3Brvaw2VFn3EK6BlspkENnWA\n" \
+     "a6xK8xuQSXgvopZPKiAlKQTGdMDQMc2PMTiVFrqoM7hD8bEfwzB/onkxEz0tNvjj\n" \
+     "/PIzark5McWvxI0NHWQWM6r6hCm21AvA2H3DkwIDAQABo4IBfTCCAXkwEgYDVR0T\n" \
+     "AQH/BAgwBgEB/wIBADAOBgNVHQ8BAf8EBAMCAYYwfwYIKwYBBQUHAQEEczBxMDIG\n" \
+     "CCsGAQUFBzABhiZodHRwOi8vaXNyZy50cnVzdGlkLm9jc3AuaWRlbnRydXN0LmNv\n" \
+     "bTA7BggrBgEFBQcwAoYvaHR0cDovL2FwcHMuaWRlbnRydXN0LmNvbS9yb290cy9k\n" \
+     "c3Ryb290Y2F4My5wN2MwHwYDVR0jBBgwFoAUxKexpHsscfrb4UuQdf/EFWCFiRAw\n" \
+     "VAYDVR0gBE0wSzAIBgZngQwBAgEwPwYLKwYBBAGC3xMBAQEwMDAuBggrBgEFBQcC\n" \
+     "ARYiaHR0cDovL2Nwcy5yb290LXgxLmxldHNlbmNyeXB0Lm9yZzA8BgNVHR8ENTAz\n" \
+     "MDGgL6AthitodHRwOi8vY3JsLmlkZW50cnVzdC5jb20vRFNUUk9PVENBWDNDUkwu\n" \
+     "Y3JsMB0GA1UdDgQWBBSoSmpjBH3duubRObemRWXv86jsoTANBgkqhkiG9w0BAQsF\n" \
+     "AAOCAQEA3TPXEfNjWDjdGBX7CVW+dla5cEilaUcne8IkCJLxWh9KEik3JHRRHGJo\n" \
+     "uM2VcGfl96S8TihRzZvoroed6ti6WqEBmtzw3Wodatg+VyOeph4EYpr/1wXKtx8/\n" \
+     "wApIvJSwtmVi4MFU5aMqrSDE6ea73Mj2tcMyo5jMd6jmeWUHK8so/joWUoHOUgwu\n" \
+     "X4Po1QYz+3dszkDqMp4fklxBwXRsW10KXzPMTZ+sOPAveyxindmjkW8lGy+QsRlG\n" \
+     "PfZ+G6Z6h7mjem0Y+iWlkYcV4PIWL1iwBi8saCbGS5jN2p8M+X+Q7UNKEkROb3N6\n" \
+     "KOqkqm57TH2H3eDJAkSnh6/DNFu0Qg==\n" \
+     "-----END CERTIFICATE-----\n";
+#endif
 
 #endif

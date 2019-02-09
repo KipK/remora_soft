@@ -18,7 +18,7 @@
 #include "remora.h"
 #include "display.h"
 
-#ifdef ESP8266
+#if defined (ESP8266) || defined (ESP32)
 #include <Wire.h>
 #endif
 
